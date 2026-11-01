@@ -1,1 +1,4 @@
 qrcode[pil]
+zxing-cpp
+openpyxl
+pywin32
