@@ -86,6 +86,9 @@ def generate_barcode(data, barcode_type, scale=2, bar_height=None):
     except ValueError as e:
         raise ValueError(re.sub(r"^Error \d+: |\s*\(retval: \d+\)$", "", str(e))) from None
 
+    if kind.layout == "linear":
+        scale = max(scale, 2)  # at 1 pixel per module zxing draws no text under the bars
+
     pixels = memoryview(code.to_image(scale=scale, add_hrt=kind.layout == "linear"))
     height, width = pixels.shape
     image = Image.frombytes("L", (width, height), pixels.tobytes())
@@ -170,8 +173,9 @@ def list_printers():
 def print_images(images, printer, columns=1, rows=1, title="Barcodes", output_file=None):
     """Print images on printer, columns x rows per page, using the page size set in the printer driver.
 
-    Each image is enlarged by a whole number so bars stay exact; pass images rendered at
-    one pixel per module. output_file is for printers that write files (e.g. Print to PDF).
+    Each image is enlarged by a whole number so bars stay exact, so pass small images
+    (the smallest size from generate_barcode). output_file is for printers that write files
+    (e.g. Print to PDF).
     """
     import win32con
     import win32ui

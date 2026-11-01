@@ -36,6 +36,7 @@ Supported types:
 
 - **Size** sets the width of the thinnest bar (or each square of a 2D code); **Height** sets the bar height for linear barcodes. Bars are always whole pixels wide, so the codes stay scannable at every size.
 - **Import Excel…** loads the first sheet of an `.xlsx` file. Pick a column, click a value to preview it, or use **Save all as PNG…** to export every value to a folder. Invalid values are skipped and listed.
+- In the list, select values with click, **Shift+click** (range), **Ctrl+click** (add or remove one) or **Ctrl+A** (all). Saving and printing then use only the selected values; with nothing selected they use the whole list.
 - **Number sequence** creates the list for you: From, To, Step, Prefix, Suffix and Min digits (e.g. `INV-` and 4 digits gives `INV-0001`, `INV-0002`, …).
 - **Print…** prints the current code and **Print all…** prints every value in the list. Choose the printer, one code per page/label (label printers) or several per page (sticker sheets), and the copies of each. The page or label size comes from the printer's settings in Windows; each code is enlarged to fill it while keeping the bars exact.
 

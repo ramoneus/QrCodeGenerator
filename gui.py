@@ -160,7 +160,7 @@ class App(tk.Tk):
         self._build_excel_panel(self.source_panels["excel"])
         self._build_sequence_panel(self.source_panels["sequence"])
 
-        list_box = tk.Frame(parent, bg=CARD, highlightthickness=1, highlightbackground=BORDER)
+        list_box = tk.Frame(parent, bg=CARD, highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT)
         list_box.pack(fill="both", expand=True, pady=(8, 0))
         scrollbar = ttk.Scrollbar(list_box, orient="vertical")
         scrollbar.pack(side="right", fill="y")
@@ -176,18 +176,23 @@ class App(tk.Tk):
             selectforeground="#FFFFFF",
             activestyle="none",
             exportselection=False,
+            selectmode="extended",  # click, Shift+click for a range, Ctrl+click to add or remove one
             height=6,
             yscrollcommand=scrollbar.set,
         )
         self.listbox.pack(side="left", fill="both", expand=True, padx=(6, 0), pady=4)
         scrollbar.configure(command=self.listbox.yview)
         self.listbox.bind("<<ListboxSelect>>", self._on_value_select)
+        self.listbox.bind("<Button-1>", self._on_list_click, add="+")
+        # match the physical A key (keycode 65) so Ctrl+A also works with a Greek keyboard layout
+        self.listbox.bind("<Control-KeyPress>", lambda e: self._select_all_values() if e.keycode == 65 else None)
 
         batch_actions = tk.Frame(parent, bg=CARD)
         batch_actions.pack(fill="x", pady=(8, 0))
         self.save_all_button = self._button(batch_actions, "Save all as PNG…", self.save_all)
         self.save_all_button.pack(side="left", expand=True, fill="x", padx=(0, 6))
-        self.print_all_button = self._button(batch_actions, "Print all…", lambda: self.open_print_dialog(self.values))
+        self.print_all_button = self._button(batch_actions, "Print all…",
+                                             lambda: self.open_print_dialog(self._chosen_values()))
         self.print_all_button.pack(side="left", expand=True, fill="x", padx=(6, 0))
 
     def _build_excel_panel(self, parent):
@@ -314,8 +319,8 @@ class App(tk.Tk):
         return button
 
     def _make_image(self, data, for_print=False):
-        """for_print renders one pixel per module; print_images enlarges it to fit the label."""
-        size = 1 if for_print else self.size_var.get()
+        """for_print renders a small exact image; print_images enlarges it by a whole number to fit the label."""
+        size = 2 if for_print else self.size_var.get()
         barcode_type = self.type_var.get()
         if barcode_type == QR_CODE:
             return generate_qr(data, box_size=1 if for_print else 2 * size).get_image()
@@ -453,9 +458,29 @@ class App(tk.Tk):
         self.listbox.delete(0, "end")
         for value in values:
             self.listbox.insert("end", value)
-        state = "normal" if values else "disabled"
-        self.save_all_button.configure(state=state)
-        self.print_all_button.configure(state=state)
+        self._update_batch_buttons()
+
+    def _chosen_values(self):
+        """The selected values, or every value when nothing is selected."""
+        selection = self.listbox.curselection()
+        return [self.values[i] for i in selection] if selection else self.values
+
+    def _update_batch_buttons(self):
+        count = len(self.listbox.curselection())
+        state = "normal" if self.values else "disabled"
+        self.save_all_button.configure(state=state, text=f"Save {count} as PNG…" if count else "Save all as PNG…")
+        self.print_all_button.configure(state=state, text=f"Print {count}…" if count else "Print all…")
+
+    def _on_list_click(self, event):
+        # runs before the Listbox class binding, so remember which row was clicked for the preview
+        self.clicked_index = self.listbox.nearest(event.y)
+        self.listbox.focus_set()
+
+    def _select_all_values(self, event=None):
+        self.listbox.selection_set(0, "end")
+        self._update_batch_buttons()
+        self._show_status(f"All {len(self.values)} values selected.", MUTED)
+        return "break"
 
     def _show_source(self, source):
         self.source = source
@@ -475,10 +500,18 @@ class App(tk.Tk):
             self._show_status("", MUTED)
 
     def _on_value_select(self, event=None):
+        self._update_batch_buttons()
         selection = self.listbox.curselection()
-        if selection:
-            self.data_var.set(self.values[selection[0]])
-            self.generate()
+        if not selection:
+            return
+
+        # preview the row just clicked if it is selected, otherwise the first selected one
+        clicked = getattr(self, "clicked_index", None)
+        index = clicked if clicked in selection else selection[0]
+        self.data_var.set(self.values[index])
+        self.generate()
+        if len(selection) > 1 and self.image is not None:
+            self._show_status(f"{len(selection)} of {len(self.values)} selected. Showing {self.values[index]}.", MUTED)
 
     def _on_type_change(self, event=None):
         kind = BARCODE_TYPES[self.type_var.get()]
@@ -495,9 +528,10 @@ class App(tk.Tk):
         if not folder:
             return
 
+        values = self._chosen_values()
         saved, skipped, used_names = 0, [], set()
-        for i, value in enumerate(self.values, start=1):
-            self._show_status(f"Saving {i} of {len(self.values)}…", MUTED)
+        for i, value in enumerate(values, start=1):
+            self._show_status(f"Saving {i} of {len(values)}…", MUTED)
             self.update_idletasks()
 
             try:
@@ -520,7 +554,7 @@ class App(tk.Tk):
             saved += 1
 
         if skipped:
-            self._show_status(f"Saved {saved} of {len(self.values)} images. {len(skipped)} skipped.", ERROR)
+            self._show_status(f"Saved {saved} of {len(values)} images. {len(skipped)} skipped.", ERROR)
             self._report_skipped(skipped)
         else:
             self._show_status(f"Saved {saved} images to {folder}", SUCCESS)
@@ -645,6 +679,7 @@ class App(tk.Tk):
     def clear(self):
         self.data_var.set("")
         self.listbox.selection_clear(0, "end")
+        self._update_batch_buttons()
         self._on_type_change()
         self.entry.focus_set()
 
