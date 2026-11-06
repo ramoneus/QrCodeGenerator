@@ -13,6 +13,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/ramoneus/QrCodeGenerator/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/ramoneus/QrCodeGenerator/actions/workflows/tests.yml/badge.svg"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white">
   <img alt="Tkinter" src="https://img.shields.io/badge/GUI-Tkinter-1F2328">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows-0078D4?logo=windows&logoColor=white">
@@ -78,6 +79,7 @@ It runs offline as a single `.exe`, with no installation and no account.
 | Excel     | openpyxl                                  |
 | Printing  | pywin32 (Windows GDI)                     |
 | Packaging | PyInstaller, as a single-file `.exe`      |
+| Testing   | pytest, run on Windows by GitHub Actions  |
 
 ## Getting started
 
@@ -104,6 +106,24 @@ To make a single QR code from the command line, run `python main.py`, enter a li
 
 Double-click **`Build exe.bat`**. It installs the dependencies and PyInstaller, then writes `dist\Barcode Generator.exe`.
 
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+The pytest suite checks:
+- **Every code scans.** Each of the 19 types is generated and then read back with a barcode reader, at several sizes and bar heights, and must decode to the expected text, check digit included.
+- **Bar height.** The bars come out exactly as tall as requested, the text under them is unchanged, and the codes still scan.
+- **Error messages.** Invalid input gives a readable error.
+- **Sequences.** Prefixes, suffixes, leading zeros, counting down, steps and the 10,000-value limit.
+- **Excel import.** Numbers stored as floats, leading zeros, blank cells, short rows and multiple sheets.
+- **File names.** Values are turned into names that are safe on Windows.
+- **Printing.** Codes are printed to *Microsoft Print to PDF*, and the number of pages is checked for each layout. These tests are skipped when that printer isn't installed.
+
+GitHub Actions runs the tests on Windows for every push and pull request.
+
 ## Tips
 
 - Numbers with leading zeros, such as `0123…`, must be stored as text in Excel. Otherwise Excel drops the zeros.
@@ -113,7 +133,6 @@ Double-click **`Build exe.bat`**. It installs the dependencies and PyInstaller, 
 
 - SVG and PDF export for print shops
 - Saved print layouts for common label sheets
-- Unit tests for the generation and sequence logic
 
 ## License
 
