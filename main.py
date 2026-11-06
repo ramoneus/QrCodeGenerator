@@ -163,11 +163,16 @@ def make_sequence(start, end, step=1, prefix="", suffix="", digits=0):
 
 
 def list_printers():
-    """Return (installed printer names, default printer name). Windows only."""
+    """Return (installed printer names, default printer name or None). Windows only."""
     import win32print
 
     flags = win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
-    return [printer[2] for printer in win32print.EnumPrinters(flags)], win32print.GetDefaultPrinter()
+    printers = [printer[2] for printer in win32print.EnumPrinters(flags)]
+    try:
+        default = win32print.GetDefaultPrinter()
+    except (RuntimeError, win32print.error):  # Windows has no default printer set
+        default = None
+    return printers, default
 
 
 def print_images(images, printer, columns=1, rows=1, title="Barcodes", output_file=None):

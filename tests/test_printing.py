@@ -11,7 +11,20 @@ def test_lists_installed_printers():
     printers, default = list_printers()
     assert isinstance(printers, list)
     assert all(isinstance(name, str) and name for name in printers)
-    assert default in printers or not printers
+    assert default is None or default in printers
+
+
+def test_works_without_a_default_printer(monkeypatch):
+    # Found by CI: the GitHub runner has printers but no default one, which used to crash Print….
+    import win32print
+
+    def no_default():
+        raise RuntimeError("The default printer was not found.")
+
+    monkeypatch.setattr(win32print, "GetDefaultPrinter", no_default)
+    printers, default = list_printers()
+    assert isinstance(printers, list)
+    assert default is None
 
 
 @pytest.fixture
